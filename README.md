@@ -9,13 +9,15 @@ does it know when it is wrong?
 ## Data
 
 GB1 from the [FLIP benchmark](https://github.com/J-SNACKKB/FLIP/tree/main/splits/gb1):
-about 160,000 variants of protein GB1 mutated at four positions (V39, D40, G41, V54),
-each with a fitness value from a binding assay (Wu et al., eLife 2016).
+variants of protein GB1 mutated at four positions (V39, D40, G41, V54), each with a
+fitness value from a binding assay (Wu et al., eLife 2016). The original landscape
+covers about 160,000 variants; the FLIP split files used here contain 8,733 each,
+with columns `sequence`, `target`, `set` (train/test) and `validation`.
 The data is not stored in this repository. To download it:
 
 ```bash
 curl -L -o data/splits.zip https://github.com/J-SNACKKB/FLIP/raw/main/splits/gb1/splits.zip
-unzip -o data/splits.zip -d data
+unzip -o data/splits.zip -d data   # files land in data/splits/
 ```
 
 ## Setup
