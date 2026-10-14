@@ -1,0 +1,18 @@
+sampled        done in  27.4s  ridge=0.788  mlp=0.945  ensemble=0.954
+three_vs_rest  done in  13.5s  ridge=0.750  mlp=0.869  ensemble=0.881
+two_vs_rest    done in   5.3s  ridge=0.561  mlp=0.520  ensemble=0.546
+one_vs_rest    done in   3.6s  ridge=0.280  mlp=0.195  ensemble=0.238
+low_vs_high    done in  22.1s  ridge=0.345  mlp=0.579  ensemble=0.635
+| Split | Train / val / test | Ridge (additive) | Network without ReLU | MLP, 5 seeds | Ensemble of 5 | Uncertainty vs error |
+|---|---|---|---|---|---|---|
+| sampled | 6289 / 699 / 1745 | 0.788 [0.766, 0.807] | 0.787 ± 0.002 | 0.945 ± 0.002 | 0.954 [0.948, 0.959] | 0.594 |
+| three_vs_rest | 2691 / 299 / 5743 | 0.750 [0.738, 0.760] | 0.753 ± 0.005 | 0.869 ± 0.004 | 0.881 [0.876, 0.886] | 0.662 |
+| two_vs_rest | 381 / 43 / 8309 | 0.561 [0.545, 0.576] | 0.547 ± 0.007 | 0.520 ± 0.022 | 0.546 [0.529, 0.561] | 0.037 |
+| one_vs_rest | 25 / 3 / 8705 | 0.280 [0.259, 0.297] | 0.171 ± 0.052 | 0.195 ± 0.064 | 0.238 [0.217, 0.259] | -0.029 |
+| low_vs_high | 4580 / 509 / 3644 | 0.345 [0.317, 0.374] | 0.338 ± 0.011 | 0.579 ± 0.008 | 0.635 [0.613, 0.656] | 0.138 |
+sampled        disagreement vs error, within prediction quintiles: 0.284
+three_vs_rest  disagreement vs error, within prediction quintiles: 0.292
+two_vs_rest    disagreement vs error, within prediction quintiles: 0.027
+one_vs_rest    disagreement vs error, within prediction quintiles: -0.026
+low_vs_high    disagreement vs error, within prediction quintiles: 0.081
+saved results/uncertainty.png
