@@ -47,11 +47,11 @@ def ridge_predict(train, test, lam=1.0):
 
 
 class MLP(nn.Module):
-    def __init__(self, hidden=128, relu=True):
+    def __init__(self, hidden=128, relu=True, in_dim=80):
         super().__init__()
         act = nn.ReLU() if relu else nn.Identity()   # Identity = no non-linearity
         self.net = nn.Sequential(
-            nn.Linear(80, hidden), act,
+            nn.Linear(in_dim, hidden), act,
             nn.Linear(hidden, hidden), act,
             nn.Linear(hidden, 1),
         )
@@ -62,19 +62,24 @@ class MLP(nn.Module):
 
 # ---------- training --------------------------------------------------------------
 def train_mlp(train, val, seed, relu=True, max_epochs=300, patience=25, lr=1e-3, batch_size=64):
-    """Train with early stopping: keep the weights from the epoch with the lowest validation loss."""
+    """Train on one-hot input with early stopping (see train_mlp_xy)."""
+    return train_mlp_xy(encode(train), targets(train), encode(val), targets(val), seed,
+                        relu=relu, max_epochs=max_epochs, patience=patience, lr=lr, batch_size=batch_size)
+
+
+def train_mlp_xy(x, y, xv, yv, seed, relu=True, max_epochs=300, patience=25, lr=1e-3, batch_size=64):
+    """Train on any input features. Keep the weights from the epoch with the lowest validation loss."""
     torch.manual_seed(seed)
-    model = MLP(relu=relu)
+    model = MLP(relu=relu, in_dim=x.shape[1])
     opt = torch.optim.Adam(model.parameters(), lr=lr)
     loss_fn = nn.MSELoss()
-    dl = DataLoader(TensorDataset(encode(train), targets(train)), batch_size=batch_size, shuffle=True)
-    xv, yv = encode(val), targets(val)
+    dl = DataLoader(TensorDataset(x, y), batch_size=batch_size, shuffle=True)
 
     best_loss, best_state, best_epoch, waited = float("inf"), None, 0, 0
     for epoch in range(1, max_epochs + 1):
         model.train()
-        for x, y in dl:
-            loss = loss_fn(model(x), y)
+        for xb, yb in dl:
+            loss = loss_fn(model(xb), yb)
             opt.zero_grad()
             loss.backward()
             opt.step()
@@ -90,6 +95,12 @@ def train_mlp(train, val, seed, relu=True, max_epochs=300, patience=25, lr=1e-3,
                 break
     model.load_state_dict(best_state)
     return model, best_epoch
+
+
+def predict_x(model, x):
+    model.eval()
+    with torch.no_grad():
+        return model(x).numpy()
 
 
 def predict(model, frame):

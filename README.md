@@ -7,6 +7,10 @@ on splits that force extrapolation from fewer mutations to more. The short answe
 interactions between mutations very well when they have seen combinations, do no better than an
 additive model when they have not, and their confidence stops meaning anything in exactly that case.
 
+[Part 2](#part-2-does-a-protein-language-model-help) adds the protein language model ESM-2. It lifts the
+model trained on single and double mutants from 0.55 to 0.76, but about half of that gain comes from simply
+knowing which amino acids resemble each other, model size makes no difference, and the confidence problem remains.
+
 ## Data
 
 GB1 from the [FLIP benchmark](https://github.com/J-SNACKKB/FLIP/tree/main/splits/gb1): variants of
@@ -71,7 +75,77 @@ confident ones from left to right. Right: accuracy by number of mutations on the
 The practical point for protein design: a model fitted to single mutants will propose combinations it
 cannot score, and its own uncertainty will not warn you.
 
-## Limitations
+## Part 2: does a protein language model help?
+
+Part 1 left one question open: data containing only single mutants says nothing about how mutations combine,
+so a model needs outside knowledge. ESM-2 was pretrained on millions of natural protein sequences. Does what
+it learned fill the gap?
+
+### Method
+
+- **Input to ESM-2:** the GB1 domain only, the first 56 residues. The remaining 209 residues of each sequence
+  are the experiment's fusion construct; they never change, and all four mutated positions are in the domain.
+- **Four model sizes:** 8M, 35M, 150M and 650M parameters, used frozen (no fine-tuning).
+- **Zero-shot scores, no training data at all:** how likely ESM-2 finds each mutation, either in the wild-type
+  context (one masked position at a time, summed) or in the variant's own context.
+- **Supervised:** ESM-2's representation at the four mutated positions (or averaged over the domain), fed to
+  ridge regression and to the same five-network ensemble, early stopping and splits as part 1.
+- **Controls:** the same ensemble with two cheaper encodings of each amino acid: its row of the BLOSUM62
+  substitution matrix, and ESM-2 650M's embedding of the amino acid on its own, with no protein context.
+
+### Results
+
+Spearman on the test set, with 95% bootstrap intervals. Full tables: `results/esm_table.md` (all four sizes,
+all approaches) and `results/controls_table.md`.
+
+| Split | One-hot ensemble (part 1) | One-hot ridge (part 1) | ESM-2 650M zero-shot | ESM-2 650M ensemble |
+|---|---|---|---|---|
+| sampled | **0.954** [0.948, 0.959] | 0.788 | 0.259 [0.218, 0.300] | **0.953** [0.947, 0.959] |
+| three_vs_rest | **0.881** [0.876, 0.886] | 0.750 | 0.230 [0.201, 0.255] | 0.876 [0.870, 0.881] |
+| two_vs_rest | 0.546 [0.529, 0.561] | 0.561 | 0.255 [0.235, 0.273] | **0.749** [0.739, 0.758] |
+| one_vs_rest | 0.238 [0.217, 0.259] | **0.280** | 0.257 [0.236, 0.278] | 0.184 [0.163, 0.205] |
+| low_vs_high | **0.635** [0.613, 0.656] | 0.345 | 0.002 [-0.029, 0.034] | 0.603 [0.580, 0.625] |
+
+Where the two_vs_rest gain comes from (same ensemble, only the encoding changes):
+
+| Encoding | Spearman |
+|---|---|
+| One-hot | 0.546 [0.529, 0.561] |
+| BLOSUM62 substitution matrix | 0.661 [0.646, 0.676] |
+| ESM-2 650M, amino acid without context | 0.731 [0.720, 0.740] |
+| ESM-2 8M / 35M / 150M / 650M, reading the domain | 0.761 / 0.745 / 0.752 / 0.749 |
+
+![ESM-2 comparison](results/esm_comparison.png)
+
+### What I found
+
+1. **ESM-2 fixes the middle case.** Trained on single and double mutants, the ensemble improves from 0.546 to
+   0.749 on triple and quadruple mutants. Where part 1's models had already seen combinations, there is no gain.
+2. **Most of the gain is amino-acid similarity.** A substitution matrix with no machine learning gets 0.661.
+   ESM-2's embedding of each amino acid on its own gets 0.731. Reading the protein in context adds a little
+   more (0.749 to 0.761): clear for the 8M model, at the edge of the intervals for 650M.
+3. **Model size makes no difference** for supervised use: 8M is as good as 650M (0.761 against 0.749).
+4. **With only single mutants to learn from, richer features make things worse.** 25 training rows cannot
+   support thousands of features; the additive one-hot model stays best (0.280). ESM-2 650M with no training
+   data at all (0.257) does about as well as anything trained on those 25 rows.
+5. **Zero-shot scores are weak but grow with size** (0.09 for 8M, 0.26 for 650M across all variants), and scoring
+   each mutation in the wild-type context beats scoring it in the variant's own context at every size.
+6. **Better accuracy did not bring trustworthy confidence.** On two_vs_rest, ensemble disagreement still barely
+   tracks error once prediction size is controlled for (0.04 to 0.14 across sizes, against 0.03 for one-hot).
+
+So for this protein: a pretrained model helps most by telling a small dataset which amino acids are
+interchangeable, a cheap substitution matrix gets half way, and neither tells you when to stop trusting the model.
+
+### Limitations of part 2
+
+- ESM-2 is used frozen. Fine-tuning it on the training data might extrapolate better.
+- One protein, one benchmark subset of 8,733 variants.
+- The no-context control uses the 650M model's embeddings; comparing it with the 8M model in context mixes two models.
+- Ridge on high-dimensional ESM features was unstable (two_vs_rest: 0.611 with 8M, 0.371 with 650M), so the ensemble
+  is the fairer comparison. Neither was tuned beyond choosing the ridge penalty on validation data.
+- one_vs_rest still has only 3 validation rows.
+
+## Limitations of part 1
 
 - One encoding, one small architecture and no hyperparameter search. Better models may extrapolate better.
 - one_vs_rest has 3 validation rows, so early stopping there is close to arbitrary.
@@ -89,8 +163,15 @@ python3 -m venv .venv && source .venv/bin/activate && pip install -r requirement
 curl -L -o data/splits.zip https://github.com/J-SNACKKB/FLIP/raw/main/splits/gb1/splits.zip
 unzip -o data/splits.zip -d data      # files land in data/splits/
 python explore.py                     # data summary, histogram, ridge on every split
-python run_all.py                     # everything above, about 80 seconds on a laptop CPU
+python run_all.py                     # part 1, about 80 seconds on a laptop CPU
+
+# part 2
+python esm_features.py 8M             # also 35M, 150M, 650M; 650M takes about 75 minutes on a laptop
+python run_esm.py                     # every ESM-2 size found in features/, all splits
+python run_controls.py                # BLOSUM62 and no-context controls
+python plot_esm.py                    # results/esm_comparison.png
 ```
 
 `train.ipynb` is the first network built step by step, run on a Colab GPU. `gb1.py` holds the shared
-code and `run_all.py` produces the table, `results/results.json` and the figure.
+code. `run_all.py` produces part 1's table, `results/results.json` and figure; the part 2 scripts write
+`results/esm_*` and `results/controls*`. Extracted features go to `features/`, which is not committed.
