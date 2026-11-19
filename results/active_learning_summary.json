@@ -1,0 +1,37 @@
+{
+  "random": {
+    "max_fitness_mean": 6.668012663372001,
+    "max_fitness_std": 0.9660210011734013,
+    "top1_hits_mean": 4.0,
+    "top1_hits_std": 1.4142135623730951,
+    "fwaa_found_rate": 0.0
+  },
+  "greedy": {
+    "max_fitness_mean": 7.651360786905999,
+    "max_fitness_std": 0.5632998930047559,
+    "top1_hits_mean": 34.2,
+    "top1_hits_std": 6.49307323229917,
+    "fwaa_found_rate": 20.0
+  },
+  "ucb_1": {
+    "max_fitness_mean": 7.892380100375999,
+    "max_fitness_std": 0.7100136327543491,
+    "top1_hits_mean": 38.0,
+    "top1_hits_std": 7.615773105863909,
+    "fwaa_found_rate": 40.0
+  },
+  "ucb_2": {
+    "max_fitness_mean": 8.182241952154001,
+    "max_fitness_std": 0.7100136327543491,
+    "top1_hits_mean": 31.4,
+    "top1_hits_std": 3.97994974842648,
+    "fwaa_found_rate": 60.0
+  },
+  "ei": {
+    "max_fitness_mean": 8.52094634224,
+    "max_fitness_std": 0.48203862694,
+    "top1_hits_mean": 29.6,
+    "top1_hits_std": 4.409081537009721,
+    "fwaa_found_rate": 80.0
+  }
+}

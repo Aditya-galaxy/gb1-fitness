@@ -11,6 +11,8 @@ additive model when they have not, and their confidence stops meaning anything i
 model trained on single and double mutants from 0.55 to 0.76, but about half of that gain comes from simply
 knowing which amino acids resemble each other, model size makes no difference, and the confidence problem remains.
 
+[Part 3](#part-3-in-silico-directed-evolution--active-learning) simulates an iterative wet-lab directed evolution campaign. Starting from a tiny budget of 40 variants, Bayesian optimization with **Expected Improvement (EI)** finds the global optimum quadruple mutant (`FWAA`, fitness = 8.76) in **80% of trials** within 240 total assays (<2.8% of the library), compared to 0% for random screening and 20% for greedy exploitation.
+
 ## Data
 
 GB1 from the [FLIP benchmark](https://github.com/J-SNACKKB/FLIP/tree/main/splits/gb1): variants of
@@ -145,6 +147,38 @@ interchangeable, a cheap substitution matrix gets half way, and neither tells yo
   is the fairer comparison. Neither was tuned beyond choosing the ridge penalty on validation data.
 - one_vs_rest still has only 3 validation rows.
 
+## Part 3: In Silico Directed Evolution & Active Learning
+
+Can machine-learning-guided active learning discover high-fitness variants and the global optimum without screening the whole library?
+
+In wet-lab protein engineering, synthesizing thousands of variants is cost-prohibitive. Part 3 simulates an iterative active learning campaign across the 8,733 variants:
+- **Budget:** 40 initial variants (round 0), followed by 8 rounds of 25 variants each = **240 total assays** (only 2.7% of the combinatorial library).
+- **Surrogate:** 5-model MLP ensemble reporting predicted mean $\mu(x)$ and epistemic uncertainty $\sigma(x)$.
+- **Acquisition Strategies:**
+  - `random`: Uniformly sample 25 variants per round (high-throughput screening baseline).
+  - `greedy`: $\mu(x)$ only (pure exploitation, ignores uncertainty).
+  - `ucb_1`: Upper Confidence Bound $\mu(x) + 1.0 \cdot \sigma(x)$.
+  - `ucb_2`: Upper Confidence Bound $\mu(x) + 2.0 \cdot \sigma(x)$ (higher exploration).
+  - `ei`: Expected Improvement $\mathbb{E}[\max(y - y^*, 0)]$.
+- **Replicates:** 5 independent random seeds per strategy.
+
+### Results
+
+| Strategy | Final Max Fitness | Top-1% Hits (Fitness $\ge 5.0$) | Global Peak (`FWAA`) Found Rate |
+|---|---|---|---|
+| **Random Screening** | 6.668 ± 0.966 | 4.0 ± 1.4 | 0% |
+| **Greedy Exploitation** ($\beta=0$) | 7.651 ± 0.563 | 34.2 ± 6.5 | 20% |
+| **UCB** ($\beta=1.0$) | 7.892 ± 0.710 | **38.0 ± 7.6** | 40% |
+| **UCB** ($\beta=2.0$) | 8.182 ± 0.710 | 31.4 ± 4.0 | 60% |
+| **Expected Improvement (EI)** | **8.521 ± 0.482** | 29.6 ± 4.4 | **80%** |
+
+![Active Learning Trajectory](results/active_learning_trajectory.png)
+
+### Key Findings
+1. **Expected Improvement (EI) is the most sample-efficient strategy:** It located the global optimum (`FWAA`, fitness = 8.762) in **80% of experimental runs** with only 240 total variants tested.
+2. **Greedy search gets trapped on local peaks:** Exploiting predicted mean alone frequently converges to suboptimal single/double mutant peaks (20% global peak discovery rate).
+3. **Active learning yields a 9.5x increase in functional leads:** UCB ($\beta=1.0$) discovered an average of 38 top-1% hits compared to only 4.0 hits found by random screening.
+
 ## Limitations of part 1
 
 - One encoding, one small architecture and no hyperparameter search. Better models may extrapolate better.
@@ -170,6 +204,9 @@ python esm_features.py 8M             # also 35M, 150M, 650M; 650M takes about 7
 python run_esm.py                     # every ESM-2 size found in features/, all splits
 python run_controls.py                # BLOSUM62 and no-context controls
 python plot_esm.py                    # results/esm_comparison.png
+
+# part 3
+python active_learning.py             # in silico directed evolution, generates results/active_learning_trajectory.png
 ```
 
 `train.ipynb` is the first network built step by step, run on a Colab GPU. `gb1.py` holds the shared
