@@ -214,6 +214,44 @@ Residues 39, 40, and 41 reside in the second loop of the $\beta$-hairpin, while 
 
 *A PyMOL script to visualize the complex and hydrogen-bonding network is saved at `results/view_gb1_interface.pml`.*
 
+## CLI Inference Engine (`predict.py`)
+
+An interactive command-line tool to query any variant, compute ensemble prediction + epistemic uncertainty, check ground-truth assay results, and inspect antibody contact points:
+
+```bash
+# Predict single variant
+python predict.py FWAA
+
+# Predict multiple variants
+python predict.py --seqs "FWAA,FYAA,VDGV,HDPV"
+
+# Predict from file (one variant per line)
+python predict.py --file variants.txt
+
+# Export clean JSON for computational pipelines
+python predict.py FWAA --json
+```
+
+**Example output:**
+```text
+================================================================
+  GB1 Variant: FWAA    |  Classification: Super-binder (Top 1%)
+================================================================
+  Mutations from WT:       V39F, D40W, G41A, V54A
+  Predicted Fitness (Mean): 8.527
+  Uncertainty (Std):        ±0.123
+  95% Confidence Interval:  [8.286, 8.769]
+  Observed Wet-Lab Fitness: 8.7620 (Error: -0.235)
+  Landscape Ranking:        100.0th percentile (2 / 8733)
+
+  Structural Interface Interaction:
+    • Position 39 contacts antibody Fc Asn434 (3.28 Å)
+    • Position 40 contacts antibody Fc His433 (3.37 Å) & Asn434 (3.64 Å)
+    • Position 41 contacts antibody Fc Asn434 (3.59 Å)
+    • Position 54 contacts antibody Fc Asn434 (4.62 Å)
+================================================================
+```
+
 ## Limitations of part 1
 
 - One encoding, one small architecture and no hyperparameter search. Better models may extrapolate better.
