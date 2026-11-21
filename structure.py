@@ -3,12 +3,13 @@
 Maps the 4 combinatorial mutation sites (V39, D40, G41, V54) onto high-resolution
 crystal structures:
   - PDB 1PGA: Apo crystal structure of Streptococcus protein G B1 domain (1.9 Å)
-  - PDB 1FCC: Complex of GB1 with human IgG antibody Fc fragment (3.2 Å)
+  - PDB 1FCC: protein G C2 fragment (same residues at these positions) bound to human IgG Fc (3.2 Å)
 
-Demonstrates the structural basis of non-additive epistasis:
-  1. The 4 residues form a tightly packed 3D pocket in the beta-hairpin (< 4.8 Å heavy-atom contact).
-  2. The sites directly engage the conserved antibody Fc epitope (Asn434, His433).
-  3. Physical 3D proximity strongly correlates with empirical epistatic coupling energy.
+Reports:
+  1. Pairwise distances between the 4 positions (all within about 5 Å heavy-atom contact).
+  2. Their contacts with the antibody Fc in 1FCC.
+  3. Pairwise epistatic coupling from the landscape data, to compare against distance
+     (with only 6 pairs, the comparison is descriptive; see README).
 """
 
 import json

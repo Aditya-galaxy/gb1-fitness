@@ -11,9 +11,9 @@ additive model when they have not, and their confidence stops meaning anything i
 model trained on single and double mutants from 0.55 to 0.76, but about half of that gain comes from simply
 knowing which amino acids resemble each other, model size makes no difference, and the confidence problem remains.
 
-[Part 3](#part-3-in-silico-directed-evolution--active-learning) simulates an iterative wet-lab directed evolution campaign. Starting from a tiny budget of 40 variants, Bayesian optimization with **Expected Improvement (EI)** finds the global optimum quadruple mutant (`FWAA`, fitness = 8.76) in **80% of trials** within 240 total assays (<2.8% of the library), compared to 0% for random screening and 20% for greedy exploitation.
+[Part 3](#part-3-in-silico-directed-evolution--active-learning) replays an active learning campaign in silico, where each "assay" looks up a measured fitness. With 40 starting variants and 240 assays in total, Expected Improvement found the best variant (`FWAA`, fitness 8.76) in 4 of 5 seeds, against 1 of 5 for greedy selection and 0 of 5 for random screening. Five seeds is too few for firm rankings between strategies.
 
-[Part 4](#part-4-3d-structural-biophysics--epistasis-mapping) maps the 4 mutation sites onto crystal structures (PDB: `1PGA`, `1FCC`). It shows that the 4 sites form a tight 3D contact pocket (<4.8 Å) in the $\beta$-hairpin that directly binds the human antibody Fc domain (Asn434, His433), and demonstrates that physical 3D proximity directly correlates with epistatic coupling energy.
+[Part 4](#part-4-3d-structural-biophysics--epistasis-mapping) maps the 4 mutated positions onto crystal structures (PDB `1PGA`, and `1FCC`, which holds the closely related C2 domain bound to an antibody Fc fragment). The four positions lie close together and touch the Fc interface. Distance does not predict pairwise epistasis: across the 6 pairs, rank correlation is 0.14.
 
 ## Data
 
@@ -153,7 +153,7 @@ interchangeable, a cheap substitution matrix gets half way, and neither tells yo
 
 Can machine-learning-guided active learning discover high-fitness variants and the global optimum without screening the whole library?
 
-In wet-lab protein engineering, synthesizing thousands of variants is cost-prohibitive. Part 3 simulates an iterative active learning campaign across the 8,733 variants:
+In wet-lab protein engineering, synthesizing thousands of variants is cost-prohibitive. Part 3 replays an active learning campaign in silico across the 8,733 measured variants: no new experiments are run, and each "assay" returns the variant's measured fitness.
 - **Budget:** 40 initial variants (round 0), followed by 8 rounds of 25 variants each = **240 total assays** (only 2.7% of the combinatorial library).
 - **Surrogate:** 5-model MLP ensemble reporting predicted mean $\mu(x)$ and epistemic uncertainty $\sigma(x)$.
 - **Acquisition Strategies:**
@@ -166,31 +166,33 @@ In wet-lab protein engineering, synthesizing thousands of variants is cost-prohi
 
 ### Results
 
-| Strategy | Final Max Fitness | Top-1% Hits (Fitness $\ge 5.0$) | Global Peak (`FWAA`) Found Rate |
+Mean ± standard deviation over 5 seeds.
+
+| Strategy | Final Max Fitness | Top-1% Hits (Fitness $\ge 5.0$) | Seeds that found `FWAA` |
 |---|---|---|---|
-| **Random Screening** | 6.668 ± 0.966 | 4.0 ± 1.4 | 0% |
-| **Greedy Exploitation** ($\beta=0$) | 7.651 ± 0.563 | 34.2 ± 6.5 | 20% |
-| **UCB** ($\beta=1.0$) | 7.892 ± 0.710 | **38.0 ± 7.6** | 40% |
-| **UCB** ($\beta=2.0$) | 8.182 ± 0.710 | 31.4 ± 4.0 | 60% |
-| **Expected Improvement (EI)** | **8.521 ± 0.482** | 29.6 ± 4.4 | **80%** |
+| **Random Screening** | 6.668 ± 0.966 | 4.0 ± 1.4 | 0 of 5 |
+| **Greedy Exploitation** ($\beta=0$) | 7.651 ± 0.563 | 34.2 ± 6.5 | 1 of 5 |
+| **UCB** ($\beta=1.0$) | 7.892 ± 0.710 | **38.0 ± 7.6** | 2 of 5 |
+| **UCB** ($\beta=2.0$) | 8.182 ± 0.710 | 31.4 ± 4.0 | 3 of 5 |
+| **Expected Improvement (EI)** | **8.521 ± 0.482** | 29.6 ± 4.4 | **4 of 5** |
 
 ![Active Learning Trajectory](results/active_learning_trajectory.png)
 
 ### Key Findings
-1. **Expected Improvement (EI) is the most sample-efficient strategy:** It located the global optimum (`FWAA`, fitness = 8.762) in **80% of experimental runs** with only 240 total variants tested.
-2. **Greedy search gets trapped on local peaks:** Exploiting predicted mean alone frequently converges to suboptimal single/double mutant peaks (20% global peak discovery rate).
-3. **Active learning yields a 9.5x increase in functional leads:** UCB ($\beta=1.0$) discovered an average of 38 top-1% hits compared to only 4.0 hits found by random screening.
+1. **Every model-guided strategy beats random screening by a wide margin:** about 30 to 38 top-1% variants found on average, against 4 for random selection, within the same 240 assays.
+2. **Strategies that account for uncertainty found the best variant more often** (EI 4 of 5 seeds, UCB 2 to 3 of 5, greedy 1 of 5), but with 5 seeds the differences between them are not reliable.
+3. **Limits:** the replay assumes noise-free measurements and a fixed library, which real campaigns do not have.
 
 ## Part 4: 3D Structural Biophysics & Epistasis Mapping
 
-Why are mutations in GB1 non-additive, and why does the quadruple mutant `FWAA` achieve an 8.76x fitness jump over wild-type `VDGV`?
+Where are the four mutated positions in the folded protein, and does physical closeness explain which pairs interact most?
 
 Part 4 maps the 4 combinatorial mutation sites (V39, D40, G41, V54) onto high-resolution experimental structures:
 - **PDB `1PGA`:** Apo crystal structure of the B1 domain of streptococcal protein G (1.9 Å).
-- **PDB `1FCC`:** Crystal structure of protein G bound to human IgG antibody Fc fragment (3.2 Å).
+- **PDB `1FCC`:** Crystal structure of the C2 fragment of streptococcal protein G bound to the Fc domain of human IgG (3.2 Å). C2 is a close relative of the B1 domain and has the same residues (V39, D40, G41, V54) at these positions.
 
 ### 1. Spatial Proximity & Contact Network
-Residues 39, 40, and 41 reside in the second loop of the $\beta$-hairpin, while residue 54 is located in the C-terminal $\beta$-strand. Because the strands fold antiparallel, all four positions pack directly against each other in 3D space:
+Residues 39, 40, and 41 reside in the second loop of the $\beta$-hairpin, while residue 54 is located in the C-terminal $\beta$-strand. Because the strands fold antiparallel, all four positions lie within about 5 Å of each other:
 
 | Residue Pair | C$\alpha$ Distance (Å) | Min Heavy-Atom Distance (Å) | Epistatic Coupling Energy (Norm) |
 |---|---|---|---|
@@ -203,14 +205,14 @@ Residues 39, 40, and 41 reside in the second loop of the $\beta$-hairpin, while 
 
 ![Structure and Epistasis](results/structure_epistasis.png)
 
-### 2. Physical Basis of Epistasis
-- **The closest cross-strand contact exhibits the highest epistasis:** Residues 41 and 54 are physically closest across the $\beta$-hairpin (3.67 Å) and yield the strongest 2nd-order epistatic coupling energy (4.31).
-- **Direct Antibody Fc Epitope Engagement:** In PDB `1FCC`, all 4 positions form the core contact interface with human antibody Fc heavy chain residues:
+### 2. Does Distance Explain Epistasis?
+- **No, not in these data.** Across the 6 pairs, the rank correlation between minimum heavy-atom distance and epistatic coupling is 0.14 (0.31 using Cα distances). The two sequence neighbours (39–40, 40–41) are the closest pairs but have middling or low coupling. The strongest coupling (41–54, 4.31) is a cross-strand contact, which is suggestive, but 6 pairs cannot support a general rule.
+- **Contacts with the antibody Fc:** In PDB `1FCC`, all 4 positions lie close to Fc heavy chain residues:
   - **GB1 Val39** $\rightarrow$ Fc Asn434 (3.28 Å)
   - **GB1 Asp40** $\rightarrow$ Fc His433 (3.37 Å) & Asn434 (3.64 Å)
   - **GB1 Gly41** $\rightarrow$ Fc Asn434 (3.59 Å)
   - **GB1 Val54** $\rightarrow$ Fc Asn434 (4.62 Å)
-- **Why `FWAA` wins:** Introducing single bulky aromatic mutations (such as V39F alone) creates steric clashes within the wild-type pocket. In `FWAA`, the combination of V39F + D40W + G41A + V54A simultaneously relieves steric clashes and creates an optimized aromatic-hydrophobic packing cluster that grips the Fc Asn434/His433 epitope.
+- **A hypothesis for why `FWAA` scores highest, not tested here:** the two bulky aromatics (V39F, D40W) may fit only once the neighbouring positions shrink (G41A, V54A), giving a packed hydrophobic cluster near the Fc contact. Checking it would need structural modelling of the variants or experiments.
 
 *A PyMOL script to visualize the complex and hydrogen-bonding network is saved at `results/view_gb1_interface.pml`.*
 
